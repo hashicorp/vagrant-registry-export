@@ -26,9 +26,9 @@ func Execute() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "vagrant-registry-export",
-	Short: "Export HCP Vagrant registries",
-	Long:  "Generate registry manifests and download box artifacts locally.",
+	Use:          "vagrant-registry-export",
+	Short:        "Export HCP Vagrant registries",
+	Long:         "Generate registry manifests and download box artifacts locally.",
 	SilenceUsage: true,
 }
 

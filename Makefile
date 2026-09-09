@@ -6,7 +6,7 @@ HOST_ARCH := $(shell go env GOARCH)
 OS ?= $(HOST_OS)
 ARCH ?= $(HOST_ARCH)
 
-.PHONY: build build-all run test vet fmt tidy clean
+.PHONY: build build-all run test test-coverage vet fmt fmt-check tidy clean
 
 build: ## Build the CLI binary into bin/
 	mkdir -p $(BIN_DIR)
@@ -30,11 +30,17 @@ run: ## Run the CLI (use ARGS="..." to pass arguments)
 test: ## Run tests
 	go test $(PKG)
 
+test-coverage: ## Run tests with coverage
+	go test $(PKG) -coverprofile=coverage.out -covermode=atomic
+
 vet: ## Run go vet
 	go vet $(PKG)
 
 fmt: ## Format code
 	gofmt -l -w .
+
+fmt-check: ## Check formatting
+	@test -z "$$(gofmt -l .)"
 
 tidy: ## Tidy go.mod/go.sum
 	go mod tidy

@@ -3,6 +3,7 @@ module github.com/hashicorp/vagrant-registry-export
 go 1.26.2
 
 require (
+	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/hashicorp/hcp-sdk-go v0.175.0
 	github.com/spf13/cobra v1.10.2
@@ -19,7 +20,6 @@ require (
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect
 	github.com/go-openapi/loads v0.22.0 // indirect
-	github.com/go-openapi/runtime v0.28.0 // indirect
 	github.com/go-openapi/spec v0.21.0 // indirect
 	github.com/go-openapi/swag v0.24.1 // indirect
 	github.com/go-openapi/swag/cmdutils v0.24.0 // indirect

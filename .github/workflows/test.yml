@@ -21,4 +21,4 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-      - run: go test ./... -coverprofile=coverage.out -covermode=atomic
+      - run: make test-coverage
