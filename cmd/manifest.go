@@ -45,6 +45,9 @@ func runManifest(cmd *cobra.Command, args []string) error {
 
 	if len(manifestBoxes) > 0 {
 		reg.Boxes = filterBoxes(reg.Boxes, manifestBoxes)
+		if len(reg.Boxes) == 0 {
+			return fmt.Errorf("no boxes matched the given filter (box=%v)", manifestBoxes)
+		}
 	}
 
 	m := manifest.FromRegistry(reg)

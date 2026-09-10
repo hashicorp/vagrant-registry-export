@@ -66,8 +66,12 @@ func TestExportDownloadsSelectedArtifacts(t *testing.T) {
 		},
 	})
 
-	if err := exp.Export(m); err != nil {
+	matched, err := exp.Export(m)
+	if err != nil {
 		t.Fatalf("Export() error = %v", err)
+	}
+	if matched != 1 {
+		t.Fatalf("matched = %d, want 1", matched)
 	}
 	if got, want := strings.Join(resolved, ","), "virtualbox/arm64"; got != want {
 		t.Fatalf("resolved artifacts = %q, want %q", got, want)
@@ -85,6 +89,25 @@ func TestExportDownloadsSelectedArtifacts(t *testing.T) {
 	}
 }
 
+func TestExportReturnsZeroWhenFilterMatchesNothing(t *testing.T) {
+	exp := New(Options{
+		DestDir: t.TempDir(),
+		Filter:  Filter{Boxes: []string{"does-not-exist"}},
+		ResolveURL: func(string, string, string, string, string) (string, string, string, error) {
+			t.Fatal("ResolveURL should not be called when the filter matches nothing")
+			return "", "", "", nil
+		},
+	})
+
+	matched, err := exp.Export(testManifest())
+	if err != nil {
+		t.Fatalf("Export() error = %v", err)
+	}
+	if matched != 0 {
+		t.Fatalf("matched = %d, want 0", matched)
+	}
+}
+
 func TestExportReportsResolverError(t *testing.T) {
 	wantErr := errors.New("resolver unavailable")
 	exp := New(Options{
@@ -93,7 +116,7 @@ func TestExportReportsResolverError(t *testing.T) {
 			return "", "", "", wantErr
 		},
 	})
-	err := exp.Export(testManifest())
+	_, err := exp.Export(testManifest())
 	if err == nil || !strings.Contains(err.Error(), wantErr.Error()) {
 		t.Fatalf("Export() error = %v, want resolver error", err)
 	}
@@ -134,7 +157,7 @@ func TestExportRejectsDownloadFailureAndCleansTemporaryFile(t *testing.T) {
 			return server.URL, "", "", nil
 		},
 	})
-	if err := exp.Export(testManifest()); err == nil {
+	if _, err := exp.Export(testManifest()); err == nil {
 		t.Fatal("Export() unexpectedly succeeded")
 	}
 	path := exp.artifactPath(testManifest().Boxes[0], testManifest().Boxes[0].Versions[0], testManifest().Boxes[0].Versions[0].Providers[0], "amd64")

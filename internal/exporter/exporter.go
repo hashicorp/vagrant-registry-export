@@ -85,10 +85,12 @@ func New(opts Options) *Exporter {
 	}
 }
 
-// Export walks the manifest and downloads every provider artifact that is
-// not already present on disk (unless Force is set). Downloads run
-// concurrently according to Options.Concurrency.
-func (e *Exporter) Export(m *manifest.Manifest) error {
+// Export walks the manifest and downloads every provider artifact that
+// matches Options.Filter and is not already present on disk (unless Force
+// is set). Downloads run concurrently according to Options.Concurrency.
+// It returns the number of artifacts that matched the filter, regardless
+// of whether they were newly downloaded or already present on disk.
+func (e *Exporter) Export(m *manifest.Manifest) (int, error) {
 	type job struct {
 		box          manifest.Box
 		version      manifest.Version
@@ -150,9 +152,9 @@ func (e *Exporter) Export(m *manifest.Manifest) error {
 		errs = append(errs, err)
 	}
 	if len(errs) > 0 {
-		return errors.Join(errs...)
+		return len(jobs), errors.Join(errs...)
 	}
-	return nil
+	return len(jobs), nil
 }
 
 func (e *Exporter) exportArtifact(registryName string, box manifest.Box, version manifest.Version, provider manifest.Provider, architecture string) error {

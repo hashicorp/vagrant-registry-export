@@ -44,7 +44,7 @@ func init() {
 	exportCmd.Flags().StringVar(&exportManifestPath, "manifest", "", "path to an existing manifest JSON file")
 	exportCmd.Flags().StringVarP(&exportDestDir, "dest", "d", "./export", "destination directory to replicate box files into")
 	exportCmd.Flags().BoolVar(&exportForce, "force", false, "re-download files even if they already exist on disk")
-	exportCmd.Flags().IntVarP(&exportConcurrency, "concurrency", "c", 5, "number of box files to download in parallel")
+	exportCmd.Flags().IntVarP(&exportConcurrency, "concurrency", "c", 1, "number of box files to download in parallel")
 
 	exportCmd.Flags().StringSliceVar(&exportBoxes, "box", nil, "limit export to specific box name(s)")
 	exportCmd.Flags().StringSliceVar(&exportBoxesAlt, "boxes", nil, "alias for --box, accepts a comma-separated list")
@@ -105,10 +105,19 @@ func runExport(cmd *cobra.Command, args []string) error {
 		},
 	})
 
-	if err := exp.Export(m); err != nil {
+	matched, err := exp.Export(m)
+	if err != nil {
 		return err
 	}
 
-	fmt.Fprintf(cmd.ErrOrStderr(), "export complete: %d box(es) replicated under %s\n", len(m.Boxes), exportDestDir)
+	if matched == 0 {
+		return fmt.Errorf("no boxes matched the given filters (box=%v version=%v provider=%v arch=%v)",
+			append(exportBoxes, exportBoxesAlt...),
+			append(exportVersions, exportVersionsAlt...),
+			append(exportProviders, exportProvidersAlt...),
+			append(exportArchs, exportArchsAlt...))
+	}
+
+	fmt.Fprintf(cmd.ErrOrStderr(), "export complete: %d artifact(s) replicated under %s\n", matched, exportDestDir)
 	return nil
 }
