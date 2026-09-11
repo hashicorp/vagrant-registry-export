@@ -3,6 +3,8 @@ package hcp
 
 import (
 	"fmt"
+	"net/url"
+	"regexp"
 
 	"github.com/go-openapi/strfmt"
 
@@ -91,4 +93,60 @@ func (c *Client) DownloadURL(registry, box, version, provider, architecture stri
 		checksumType = string(*resp.Payload.ChecksumType)
 	}
 	return resp.Payload.URL, resp.Payload.Checksum, checksumType, nil
+}
+
+// downloadEndpointBaseURL is the public base URL of the HCP Vagrant Box
+// Registry API.
+const downloadEndpointBaseURL = "https://api.cloud.hashicorp.com"
+
+// downloadEndpointPattern matches the stable (non-presigned) download
+// endpoint URL produced by BuildDownloadURL, capturing its path segments.
+var downloadEndpointPattern = regexp.MustCompile(`^/vagrant/2022-09-30/registry/([^/]+)/box/([^/]+)/version/([^/]+)/provider/([^/]+)/architecture/([^/]+)/download$`)
+
+// BuildDownloadURL returns the stable HCP API URL that resolves the
+// download location for one box artifact. Unlike the presigned URL
+// returned by DownloadURL, this URL does not expire, so it is safe to
+// persist in a manifest.
+func BuildDownloadURL(registry, box, version, provider, architecture string) string {
+	return downloadEndpointBaseURL +
+		"/vagrant/2022-09-30/registry/" + url.PathEscape(registry) +
+		"/box/" + url.PathEscape(box) +
+		"/version/" + url.PathEscape(version) +
+		"/provider/" + url.PathEscape(provider) +
+		"/architecture/" + url.PathEscape(architecture) +
+		"/download"
+}
+
+// ParseDownloadURL extracts the registry/box/version/provider/architecture
+// path segments from a URL produced by BuildDownloadURL. ok is false if
+// downloadURL does not match the expected pattern.
+func ParseDownloadURL(downloadURL string) (registry, box, version, provider, architecture string, ok bool) {
+	parsed, err := url.Parse(downloadURL)
+	if err != nil {
+		return "", "", "", "", "", false
+	}
+
+	m := downloadEndpointPattern.FindStringSubmatch(parsed.Path)
+	if m == nil {
+		return "", "", "", "", "", false
+	}
+
+	unescape := func(s string) string {
+		if d, err := url.PathUnescape(s); err == nil {
+			return d
+		}
+		return s
+	}
+	return unescape(m[1]), unescape(m[2]), unescape(m[3]), unescape(m[4]), unescape(m[5]), true
+}
+
+// ResolveDownloadURL resolves the presigned download URL and checksum for
+// one artifact given its stable download endpoint URL, as produced by
+// BuildDownloadURL.
+func (c *Client) ResolveDownloadURL(downloadURL string) (url, checksum, checksumType string, err error) {
+	registry, box, version, provider, architecture, ok := ParseDownloadURL(downloadURL)
+	if !ok {
+		return "", "", "", fmt.Errorf("download URL %q is not a recognized HCP Vagrant Box Registry download endpoint", downloadURL)
+	}
+	return c.DownloadURL(registry, box, version, provider, architecture)
 }

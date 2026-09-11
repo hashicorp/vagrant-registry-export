@@ -3,6 +3,7 @@ package exporter
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -55,7 +56,7 @@ func TestExportDownloadsSelectedArtifacts(t *testing.T) {
 		DestDir:     t.TempDir(),
 		Concurrency: 1,
 		Filter:      Filter{Architectures: []string{"arm64"}},
-		ResolveURL: func(_, _, _, provider, architecture string) (string, string, string, error) {
+		ResolveURL: func(_, _, _, provider, architecture, _ string) (string, string, string, error) {
 			resolved = append(resolved, provider+"/"+architecture)
 			return server.URL, "", "", nil
 		},
@@ -93,7 +94,7 @@ func TestExportReturnsZeroWhenFilterMatchesNothing(t *testing.T) {
 	exp := New(Options{
 		DestDir: t.TempDir(),
 		Filter:  Filter{Boxes: []string{"does-not-exist"}},
-		ResolveURL: func(string, string, string, string, string) (string, string, string, error) {
+		ResolveURL: func(string, string, string, string, string, string) (string, string, string, error) {
 			t.Fatal("ResolveURL should not be called when the filter matches nothing")
 			return "", "", "", nil
 		},
@@ -112,7 +113,7 @@ func TestExportReportsResolverError(t *testing.T) {
 	wantErr := errors.New("resolver unavailable")
 	exp := New(Options{
 		DestDir: t.TempDir(),
-		ResolveURL: func(string, string, string, string, string) (string, string, string, error) {
+		ResolveURL: func(string, string, string, string, string, string) (string, string, string, error) {
 			return "", "", "", wantErr
 		},
 	})
@@ -130,7 +131,7 @@ func TestExportArtifactUsesExplicitArchitecture(t *testing.T) {
 
 	exp := New(Options{
 		DestDir: t.TempDir(),
-		ResolveURL: func(_, _, _, _, architecture string) (string, string, string, error) {
+		ResolveURL: func(_, _, _, _, architecture, _ string) (string, string, string, error) {
 			if architecture != "arm64" {
 				t.Fatalf("resolved architecture = %q, want arm64", architecture)
 			}
@@ -139,7 +140,34 @@ func TestExportArtifactUsesExplicitArchitecture(t *testing.T) {
 	})
 
 	provider := manifest.Provider{Name: "virtualbox", Architecture: "amd64"}
-	if err := exp.exportArtifact("example", manifest.Box{
+	if _, _, _, err := exp.exportArtifact("example", manifest.Box{
+		Name: "demo",
+		Tag:  "example/demo",
+	}, manifest.Version{Version: "1.0.0"}, provider, "arm64"); err != nil {
+		t.Fatalf("exportArtifact() error = %v", err)
+	}
+}
+
+func TestExportArtifactPassesProviderDownloadURL(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "box contents")
+	}))
+	defer server.Close()
+
+	const wantDownloadURL = "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/example/box/demo/version/1.0.0/provider/virtualbox/architecture/arm64/download"
+
+	exp := New(Options{
+		DestDir: t.TempDir(),
+		ResolveURL: func(_, _, _, _, _, downloadURL string) (string, string, string, error) {
+			if downloadURL != wantDownloadURL {
+				t.Fatalf("downloadURL = %q, want %q", downloadURL, wantDownloadURL)
+			}
+			return server.URL, "", "", nil
+		},
+	})
+
+	provider := manifest.Provider{Name: "virtualbox", Architecture: "arm64", DownloadURL: wantDownloadURL}
+	if _, _, _, err := exp.exportArtifact("example", manifest.Box{
 		Name: "demo",
 		Tag:  "example/demo",
 	}, manifest.Version{Version: "1.0.0"}, provider, "arm64"); err != nil {
@@ -153,7 +181,7 @@ func TestExportRejectsDownloadFailureAndCleansTemporaryFile(t *testing.T) {
 
 	exp := New(Options{
 		DestDir: t.TempDir(),
-		ResolveURL: func(string, string, string, string, string) (string, string, string, error) {
+		ResolveURL: func(string, string, string, string, string, string) (string, string, string, error) {
 			return server.URL, "", "", nil
 		},
 	})
@@ -181,6 +209,170 @@ func TestVerifyChecksum(t *testing.T) {
 	}
 	if ok, err := verifyChecksum(path, "unknown", "ignored"); err != nil || !ok {
 		t.Fatalf("verifyChecksum() unknown type = %t, %v", ok, err)
+	}
+}
+
+func TestExportWritesVagrantMetadata(t *testing.T) {
+	const contents = "box contents"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, contents)
+	}))
+	defer server.Close()
+
+	m := testManifest()
+	m.Boxes[0].Description = "demo box"
+	dest := t.TempDir()
+	sum := sha256.Sum256([]byte(contents))
+	wantChecksum := hex.EncodeToString(sum[:])
+	exp := New(Options{
+		DestDir:     dest,
+		Concurrency: 1,
+		ResolveURL: func(_, _, _, _, _, _ string) (string, string, string, error) {
+			return server.URL, wantChecksum, "sha256", nil
+		},
+	})
+
+	if _, err := exp.Export(m); err != nil {
+		t.Fatalf("Export() error = %v", err)
+	}
+
+	metadataPath := filepath.Join(dest, "example", "demo", "metadata.json")
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		t.Fatalf("reading vagrant metadata.json: %v", err)
+	}
+
+	var md manifest.VagrantMetadata
+	if err := json.Unmarshal(data, &md); err != nil {
+		t.Fatalf("unmarshaling vagrant metadata.json: %v", err)
+	}
+
+	if md.Name != "example/demo" {
+		t.Fatalf("Name = %q, want %q", md.Name, "example/demo")
+	}
+	if md.Description != "demo box" {
+		t.Fatalf("Description = %q, want %q", md.Description, "demo box")
+	}
+	if len(md.Versions) != 1 || md.Versions[0].Version != "1.0.0" {
+		t.Fatalf("Versions = %+v, want one version 1.0.0", md.Versions)
+	}
+	if len(md.Versions[0].Providers) != 2 {
+		t.Fatalf("Providers = %+v, want 2 entries", md.Versions[0].Providers)
+	}
+	for _, p := range md.Versions[0].Providers {
+		if p.Name != "virtualbox" {
+			t.Fatalf("Provider name = %q, want virtualbox", p.Name)
+		}
+		if !strings.HasPrefix(p.URL, "file://") {
+			t.Fatalf("Provider URL = %q, want file:// URL", p.URL)
+		}
+		if p.Checksum != wantChecksum || p.ChecksumType != "sha256" {
+			t.Fatalf("Provider checksum = %q/%q, want %q/sha256", p.Checksum, p.ChecksumType, wantChecksum)
+		}
+	}
+}
+
+// TestExportMetadataAccumulatesAcrossRunsWithDifferentArchFilters
+// reproduces exporting arm64 first and amd64 second (e.g. two separate
+// "export --arch arm64" then "export --arch amd64" invocations) and
+// verifies the second run's metadata.json still contains the arm64
+// provider recorded by the first run, instead of overwriting it.
+func TestExportMetadataAccumulatesAcrossRunsWithDifferentArchFilters(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "box contents")
+	}))
+	defer server.Close()
+
+	dest := t.TempDir()
+	newExporter := func() *Exporter {
+		return New(Options{
+			DestDir:     dest,
+			Concurrency: 1,
+			ResolveURL: func(_, _, _, _, _, _ string) (string, string, string, error) {
+				return server.URL, "", "", nil
+			},
+		})
+	}
+
+	// First run: only arm64.
+	if _, err := newExporter().Export(&manifest.Manifest{
+		Organization: "example",
+		Boxes: []manifest.Box{{
+			Name: "demo",
+			Tag:  "example/demo",
+			Versions: []manifest.Version{{
+				Version:   "1.0.0",
+				Providers: []manifest.Provider{{Name: "virtualbox", Architecture: "arm64"}},
+			}},
+		}},
+	}); err != nil {
+		t.Fatalf("first Export() error = %v", err)
+	}
+
+	// Second run: only amd64, simulating a later "--arch amd64" invocation.
+	if _, err := newExporter().Export(&manifest.Manifest{
+		Organization: "example",
+		Boxes: []manifest.Box{{
+			Name: "demo",
+			Tag:  "example/demo",
+			Versions: []manifest.Version{{
+				Version:   "1.0.0",
+				Providers: []manifest.Provider{{Name: "virtualbox", Architecture: "amd64"}},
+			}},
+		}},
+	}); err != nil {
+		t.Fatalf("second Export() error = %v", err)
+	}
+
+	metadataPath := filepath.Join(dest, "example", "demo", "metadata.json")
+	data, err := os.ReadFile(metadataPath)
+	if err != nil {
+		t.Fatalf("reading vagrant metadata.json: %v", err)
+	}
+	var md manifest.VagrantMetadata
+	if err := json.Unmarshal(data, &md); err != nil {
+		t.Fatalf("unmarshaling vagrant metadata.json: %v", err)
+	}
+
+	if len(md.Versions) != 1 {
+		t.Fatalf("Versions = %+v, want 1 version", md.Versions)
+	}
+	providers := md.Versions[0].Providers
+	if len(providers) != 2 {
+		t.Fatalf("Providers = %+v, want both arm64 and amd64 present after the second run", providers)
+	}
+	archs := map[string]bool{}
+	for _, p := range providers {
+		archs[p.Architecture] = true
+	}
+	if !archs["arm64"] || !archs["amd64"] {
+		t.Fatalf("archs present = %+v, want both arm64 and amd64", archs)
+	}
+}
+
+func TestExportSkipsVagrantMetadataWhenDisabled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = fmt.Fprint(w, "box contents")
+	}))
+	defer server.Close()
+
+	dest := t.TempDir()
+	exp := New(Options{
+		DestDir:             dest,
+		Concurrency:         1,
+		SkipVagrantMetadata: true,
+		ResolveURL: func(_, _, _, _, _, _ string) (string, string, string, error) {
+			return server.URL, "", "", nil
+		},
+	})
+
+	if _, err := exp.Export(testManifest()); err != nil {
+		t.Fatalf("Export() error = %v", err)
+	}
+
+	metadataPath := filepath.Join(dest, "example", "demo", "metadata.json")
+	if _, err := os.Stat(metadataPath); !os.IsNotExist(err) {
+		t.Fatalf("expected no metadata.json when SkipVagrantMetadata is set, stat err = %v", err)
 	}
 }
 

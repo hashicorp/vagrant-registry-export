@@ -94,6 +94,7 @@ func FromRegistry(reg *hcp.Registry) *Manifest {
 					mv.Providers = append(mv.Providers, Provider{
 						Name:         p.Name,
 						Architecture: a.ArchitectureType,
+						DownloadURL:  hcp.BuildDownloadURL(reg.Name, b.Name, v.Name, p.Name, a.ArchitectureType),
 						Checksum:     checksum,
 						ChecksumType: checksumType,
 					})

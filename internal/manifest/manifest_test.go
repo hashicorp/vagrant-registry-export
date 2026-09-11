@@ -51,8 +51,9 @@ func TestFromRegistry(t *testing.T) {
 		t.Fatalf("provider conversion = %#v", box.Versions[0].Providers)
 	}
 	provider := box.Versions[0].Providers[0]
-	if provider.Name != "virtualbox" || provider.Architecture != "amd64" || provider.DownloadURL != "" {
-		t.Fatalf("provider conversion = %#v", provider)
+	wantURL := "https://api.cloud.hashicorp.com/vagrant/2022-09-30/registry/example/box/demo/version/1.0.0/provider/virtualbox/architecture/amd64/download"
+	if provider.Name != "virtualbox" || provider.Architecture != "amd64" || provider.DownloadURL != wantURL {
+		t.Fatalf("provider conversion = %#v, want download URL %q", provider, wantURL)
 	}
 }
 

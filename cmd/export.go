@@ -15,6 +15,7 @@ var (
 	exportDestDir      string
 	exportForce        bool
 	exportConcurrency  int
+	exportSkipMetadata bool
 	exportBoxes        []string
 	exportBoxesAlt     []string
 	exportVersions     []string
@@ -45,6 +46,7 @@ func init() {
 	exportCmd.Flags().StringVarP(&exportDestDir, "dest", "d", "./export", "destination directory to replicate box files into")
 	exportCmd.Flags().BoolVar(&exportForce, "force", false, "re-download files even if they already exist on disk")
 	exportCmd.Flags().IntVarP(&exportConcurrency, "concurrency", "c", 1, "number of box files to download in parallel")
+	exportCmd.Flags().BoolVar(&exportSkipMetadata, "skip-vagrant-metadata", false, `skip writing a per-box "metadata.json" (Vagrant's catalog format) alongside the exported files`)
 
 	exportCmd.Flags().StringSliceVar(&exportBoxes, "box", nil, "limit export to specific box name(s)")
 	exportCmd.Flags().StringSliceVar(&exportBoxesAlt, "boxes", nil, "alias for --box, accepts a comma-separated list")
@@ -89,7 +91,13 @@ func runExport(cmd *cobra.Command, args []string) error {
 		DestDir:     exportDestDir,
 		Force:       exportForce,
 		Concurrency: exportConcurrency,
-		ResolveURL:  client.DownloadURL,
+		ResolveURL: func(registryName, boxName, version, provider, architecture, downloadURL string) (string, string, string, error) {
+			if downloadURL == "" {
+				return "", "", "", fmt.Errorf("manifest is missing a download URL for %s v%s (%s/%s)", boxName, version, provider, architecture)
+			}
+			return client.ResolveDownloadURL(downloadURL)
+		},
+		SkipVagrantMetadata: exportSkipMetadata,
 		Filter: exporter.Filter{
 			Boxes:         append(exportBoxes, exportBoxesAlt...),
 			Versions:      append(exportVersions, exportVersionsAlt...),
@@ -119,5 +127,8 @@ func runExport(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(cmd.ErrOrStderr(), "export complete: %d artifact(s) replicated under %s\n", matched, exportDestDir)
+	if !exportSkipMetadata {
+		fmt.Fprintf(cmd.ErrOrStderr(), "a metadata.json was written for each box under %s; add a box with e.g. `vagrant box add %s/<registry>/<box>/metadata.json`\n", exportDestDir, exportDestDir)
+	}
 	return nil
 }
