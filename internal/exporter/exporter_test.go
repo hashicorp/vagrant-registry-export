@@ -1,7 +1,9 @@
 package exporter
 
 import (
+	"crypto/md5"
 	"crypto/sha256"
+	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -204,11 +206,22 @@ func TestVerifyChecksum(t *testing.T) {
 	if ok, err := verifyChecksum(path, "SHA256", hex.EncodeToString(sum[:])); err != nil || !ok {
 		t.Fatalf("verifyChecksum() = %t, %v", ok, err)
 	}
+	sum384 := sha512.Sum384(data)
+	if ok, err := verifyChecksum(path, "sha384", hex.EncodeToString(sum384[:])); err != nil || !ok {
+		t.Fatalf("verifyChecksum() sha384 = %t, %v", ok, err)
+	}
+	md5sum := md5.Sum(data)
+	if ok, err := verifyChecksum(path, "md5", hex.EncodeToString(md5sum[:])); err != nil || !ok {
+		t.Fatalf("verifyChecksum() md5 = %t, %v", ok, err)
+	}
 	if ok, err := verifyChecksum(path, "sha256", "bad"); err != nil || ok {
 		t.Fatalf("verifyChecksum() mismatch = %t, %v", ok, err)
 	}
-	if ok, err := verifyChecksum(path, "unknown", "ignored"); err != nil || !ok {
-		t.Fatalf("verifyChecksum() unknown type = %t, %v", ok, err)
+	if ok, err := verifyChecksum(path, "none", ""); err != nil || !ok {
+		t.Fatalf("verifyChecksum() none type = %t, %v", ok, err)
+	}
+	if _, err := verifyChecksum(path, "unsupported", "somechecksum"); err == nil {
+		t.Fatal("verifyChecksum() unsupported type with checksum: want error, got nil")
 	}
 }
 

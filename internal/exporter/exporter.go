@@ -3,6 +3,7 @@
 package exporter
 
 import (
+	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -86,7 +87,9 @@ func New(opts Options) *Exporter {
 	return &Exporter{
 		opts: opts,
 		httpClient: &http.Client{
-			Timeout: 0, // box files can be large; rely on per-request context if needed
+			// No client-wide timeout: box files can be many gigabytes and
+			// a fixed deadline would abort otherwise-healthy downloads.
+			Timeout: 0,
 		},
 	}
 }
@@ -425,15 +428,26 @@ func fileURL(path string) string {
 func verifyChecksum(path, checksumType, want string) (bool, error) {
 	var h hash.Hash
 	switch strings.ToLower(checksumType) {
+	case "md5":
+		h = md5.New()
 	case "sha1":
 		h = sha1.New()
 	case "sha256":
 		h = sha256.New()
+	case "sha384":
+		h = sha512.New384()
 	case "sha512":
 		h = sha512.New()
-	default:
-		// Unknown or empty checksum type: nothing to verify against.
+	case "", "none", "unset":
+		// No checksum available: nothing to verify against.
 		return true, nil
+	default:
+		if want == "" {
+			return true, nil
+		}
+		// A checksum was provided but we cannot validate it; fail closed
+		// rather than silently trusting an unverifiable download.
+		return false, fmt.Errorf("unsupported checksum type %q", checksumType)
 	}
 
 	f, err := os.Open(path)
