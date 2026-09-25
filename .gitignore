@@ -1,0 +1,4 @@
+/vagrant-registry-export
+/bin/
+/export/
+*.tmp
