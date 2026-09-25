@@ -1,3 +1,6 @@
+// Copyright IBM Corp. 2026
+// SPDX-License-Identifier: MPL-2.0
+
 // Package exporter downloads box files described by a manifest and
 // writes them to a registry-organized directory.
 package exporter
