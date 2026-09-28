@@ -1,3 +1,5 @@
+// Copyright IBM Corp. 2026
+
 // Package exporter downloads box files described by a manifest and
 // writes them to a registry-organized directory.
 package exporter

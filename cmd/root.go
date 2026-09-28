@@ -1,3 +1,5 @@
+// Copyright IBM Corp. 2026
+
 // Package cmd implements the vagrant-registry-export CLI commands.
 package cmd
 

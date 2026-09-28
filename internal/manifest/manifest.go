@@ -1,3 +1,5 @@
+// Copyright IBM Corp. 2026
+
 // Package manifest defines the on-disk JSON representation produced by the
 // "registry manifest" command and consumed by the "registry export" command.
 package manifest

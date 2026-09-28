@@ -1,3 +1,5 @@
+// Copyright IBM Corp. 2026
+
 // Package hcp provides access to the HCP Vagrant Box Registry API.
 package hcp
 
