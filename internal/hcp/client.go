@@ -1,3 +1,6 @@
+// Copyright IBM Corp. 2026
+// SPDX-License-Identifier: MPL-2.0
+
 // Package hcp provides access to the HCP Vagrant Box Registry API.
 package hcp
 

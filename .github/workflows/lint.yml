@@ -3,7 +3,11 @@ name: Lint
 on:
   push:
     branches: [main]
+    paths:
+      - '*.go'
   pull_request:
+    paths:
+      - '*.go'
 
 permissions:
   contents: read

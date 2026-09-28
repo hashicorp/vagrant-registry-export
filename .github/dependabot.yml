@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    labels:
+      - "theme/dependencies"
+    schedule:
+      interval: "cron"
+      cronjob: "0 9 0 * 0" # once a week
+    groups:
+      go:
+        patterns:
+          - "*"
