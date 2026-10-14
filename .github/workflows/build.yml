@@ -9,6 +9,20 @@ on:
     paths:
       - '*.go'
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: dev
+      prerelease:
+        type: string
+        required: false
+        default: ""
+      metadata:
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -24,6 +38,8 @@ jobs:
             arch: amd64
           - os: linux
             arch: arm64
+          - os: linux
+            arch: 386
           - os: darwin
             arch: amd64
           - os: darwin
@@ -32,6 +48,8 @@ jobs:
             arch: amd64
           - os: windows
             arch: arm64
+          - os: windows
+            arch: 386
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -39,7 +57,14 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Build ${{ matrix.os }}/${{ matrix.arch }}
-        run: make build OS="${{ matrix.os }}" ARCH="${{ matrix.arch }}"
+        env:
+          VERSION: ${{ inputs.version || 'dev' }}
+          VERSION_PRERELEASE: ${{ inputs.prerelease }}
+          VERSION_METADATA: ${{ inputs.metadata }}
+        run: >-
+          make build OS="${{ matrix.os }}" ARCH="${{ matrix.arch }}"
+          VERSION="$VERSION" VERSION_PRERELEASE="$VERSION_PRERELEASE"
+          VERSION_METADATA="$VERSION_METADATA"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vagrant-registry-export-${{ matrix.os }}-${{ matrix.arch }}
