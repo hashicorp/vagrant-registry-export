@@ -1,6 +1,12 @@
 BINARY := vagrant-registry-export
 BIN_DIR := bin
 PKG    := ./...
+VERSION ?= dev
+VERSION_PRERELEASE ?=
+VERSION_METADATA ?=
+VERSION_VALUE := $(patsubst v%,%,$(VERSION))
+VERSION_PKG := github.com/hashicorp/vagrant-registry-export/version
+LDFLAGS := -s -w -X $(VERSION_PKG).Version=$(VERSION_VALUE) -X $(VERSION_PKG).VersionPrerelease=$(VERSION_PRERELEASE) -X $(VERSION_PKG).VersionMetadata=$(VERSION_METADATA)
 HOST_OS := $(shell go env GOOS)
 HOST_ARCH := $(shell go env GOARCH)
 OS ?= $(HOST_OS)
@@ -17,7 +23,7 @@ build: ## Build the CLI binary into bin/
 				output="$(BIN_DIR)/$(BINARY)"; \
 			fi; \
 			echo "building $${os}/$${arch} -> $${output}"; \
-			GOOS="$${os}" GOARCH="$${arch}" CGO_ENABLED=0 go build -o "$${output}" .; \
+			GOOS="$${os}" GOARCH="$${arch}" CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o "$${output}" .; \
 		done; \
 	done
 

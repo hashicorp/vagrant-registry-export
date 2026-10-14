@@ -43,6 +43,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&hcpSecret, "hcp-client-secret", "", "HCP service principal client secret (overrides HCP_CLIENT_SECRET env var and config file)")
 
 	rootCmd.AddCommand(registryCmd)
+	rootCmd.AddCommand(versionCmd)
 }
 
 func initConfig() {

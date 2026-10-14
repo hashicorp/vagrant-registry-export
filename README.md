@@ -18,6 +18,8 @@ Build the binary with the provided Makefile:
 ```sh
 make build          # builds bin/vagrant-registry-export for the host platform
 make build-all      # builds darwin/linux/windows for amd64 and arm64
+make build VERSION=v1.2.3  # stamp a release version into the binary
+make build VERSION=v1.2.3 VERSION_PRERELEASE=rc.1 VERSION_METADATA=build.42
 ```
 
 Or build directly with Go:
@@ -26,7 +28,24 @@ Or build directly with Go:
 go build -o vagrant-registry-export .
 ```
 
+## Releases
+
+Run the `Release` workflow from GitHub Actions with a version such as `v1.2.3`.
+Optional prerelease and metadata inputs are appended to the version; for example,
+`v1.2.3`, `rc.1`, and `build.42` produce the release tag
+`v1.2.3-rc.1+build.42`. The workflow publishes the platform binaries and a
+`SHA256SUMS` file. Supplying a prerelease identifier marks the GitHub release as
+a prerelease.
+
 ## Commands
+
+### `version`
+
+Prints the version and Go toolchain used to build the binary.
+
+```sh
+vagrant-registry-export version
+```
 
 ### `registry manifest <registry>`
 
