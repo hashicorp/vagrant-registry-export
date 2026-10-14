@@ -41,7 +41,7 @@ a prerelease.
 
 ### `version`
 
-Prints the version and Go toolchain used to build the binary.
+Prints the version of the binary.
 
 ```sh
 vagrant-registry-export version
