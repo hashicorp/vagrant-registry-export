@@ -1,34 +1,44 @@
 BINARY := vagrant-registry-export
 BIN_DIR := bin
-PKG    := ./...
-VERSION ?= dev
-VERSION_PRERELEASE ?=
-VERSION_METADATA ?=
-VERSION_VALUE := $(patsubst v%,%,$(VERSION))
+RELEASE_BIN_DIR := release
+PKG := ./...
+
 VERSION_PKG := github.com/hashicorp/vagrant-registry-export/version
-LDFLAGS := -s -w -X $(VERSION_PKG).Version=$(VERSION_VALUE) -X $(VERSION_PKG).VersionPrerelease=$(VERSION_PRERELEASE) -X $(VERSION_PKG).VersionMetadata=$(VERSION_METADATA)
+GIT_COMMIT := $(shell git rev-parse HEAD)
+GIT_DIRTY := $(if $(shell git status --porcelain),+CHANGES)
+GIT_COMMIT_FLAG = $(VERSION_PKG).GitCommit=$(GIT_COMMIT)$(GIT_DIRTY)
+BUILD_DATE ?= $(shell TZ=UTC0 git show -s --format=%cd --date=format-local:'%Y-%m-%dT%H:%M:%SZ' HEAD)
+BUILD_DATE_FLAG = $(VERSION_PKG).BuildDate=$(BUILD_DATE)
+
+GO_LDFLAGS = -X $(GIT_COMMIT_FLAG) -X $(BUILD_DATE_FLAG)
+
 HOST_OS := $(shell go env GOOS)
 HOST_ARCH := $(shell go env GOARCH)
 OS ?= $(HOST_OS)
 ARCH ?= $(HOST_ARCH)
 
-.PHONY: build build-all run test test-coverage vet fmt fmt-check tidy clean
+.PHONY: build release-build release-builds run test test-coverage vet fmt fmt-check tidy clean
 
-build: ## Build the CLI binary into bin/
-	mkdir -p $(BIN_DIR)
+build: OUTPUT=$(BIN_DIR)/$(BINARY)## Build the CLI binary into bin/
+build:
+	@mkdir -p $(BIN_DIR)
+	@rm -f "$(OUTPUT)"
+	@echo "building -> $(OUTPUT)"
+	@CGO_ENABLED=0 go build -ldflags "$(GO_LDFLAGS)" -o "$(OUTPUT)"
+
+release-build: ## Build the CLI binary into bin/
+	@rm -f $(RELEASE_BIN_DIR)/*
+	@mkdir -p $(RELEASE_BIN_DIR)
 	@for os in $(OS); do \
 		for arch in $(ARCH); do \
-			output="$(BIN_DIR)/$(BINARY)_$${os}_$${arch}"; \
-			if [ "$${os}" = "$(HOST_OS)" ] && [ "$${arch}" = "$(HOST_ARCH)" ] && [ "$(words $(OS))" -eq 1 ] && [ "$(words $(ARCH))" -eq 1 ]; then \
-				output="$(BIN_DIR)/$(BINARY)"; \
-			fi; \
-			echo "building $${os}/$${arch} -> $${output}"; \
-			GOOS="$${os}" GOARCH="$${arch}" CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o "$${output}" .; \
+			output="$(RELEASE_BIN_DIR)/$(BINARY)_$${os}_$${arch}"; \
+			echo "building release $${os}/$${arch} -> $${output}"; \
+			GOOS="$${os}" GOARCH="$${arch}" CGO_ENABLED=0 go build -ldflags "$(GO_LDFLAGS)" -o "$${output}" .; \
 		done; \
 	done
 
-build-all: ## Build common release targets into bin/
-	$(MAKE) build OS="darwin linux windows" ARCH="amd64 arm64"
+release-builds: ## Build common release targets into bin/
+	$(MAKE) release-build OS="darwin linux windows" ARCH="amd64 arm64"
 
 run: ## Run the CLI (use ARGS="..." to pass arguments)
 	go run . $(ARGS)
