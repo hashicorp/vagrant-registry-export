@@ -1,10 +1,14 @@
 // Package version contains build-time version information.
 package version
 
+import "time"
+
 var (
-	Version           = "dev"
+	BuildDate string
+	GitCommit string
+
+	Version           = "1.0.0"
 	VersionPrerelease = ""
-	VersionMetadata   = ""
 )
 
 func FormattedVersion() string {
@@ -12,8 +16,14 @@ func FormattedVersion() string {
 	if VersionPrerelease != "" {
 		formatted += "-" + VersionPrerelease
 	}
-	if VersionMetadata != "" {
-		formatted += "+" + VersionMetadata
+
+	built, _ := time.Parse(time.RFC3339, BuildDate)
+	if !built.IsZero() {
+		formatted += "\nBuildDate " + built.Format(time.RFC3339)
 	}
+	if GitCommit != "" {
+		formatted += "\nRevision " + GitCommit
+	}
+
 	return formatted
 }
