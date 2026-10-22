@@ -1,6 +1,6 @@
 module github.com/hashicorp/vagrant-registry-export
 
-go 1.26.2
+go 1.26.10
 
 require (
 	github.com/go-openapi/runtime v0.33.3
@@ -56,7 +56,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.46.0 // indirect
 	go.opentelemetry.io/otel/trace v1.46.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/net v0.59.0 // indirect
+	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.30.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
