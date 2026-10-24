@@ -4,10 +4,16 @@ on:
   push:
     branches: [main]
     paths:
-      - '*.go'
+      - "**/*.go"
+      - "go.*"
+      - Makefile
+      - .github/workflows/**
   pull_request:
     paths:
-      - '*.go'
+      - "**/*.go"
+      - "go.*"
+      - Makefile
+      - .github/workflows/**
   workflow_dispatch:
 
 permissions:
@@ -24,6 +30,8 @@ jobs:
             arch: amd64
           - os: linux
             arch: arm64
+          - os: linux
+            arch: 386
           - os: darwin
             arch: amd64
           - os: darwin
@@ -32,6 +40,8 @@ jobs:
             arch: amd64
           - os: windows
             arch: arm64
+          - os: windows
+            arch: 386
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -39,7 +49,8 @@ jobs:
           go-version-file: go.mod
           cache: true
       - name: Build ${{ matrix.os }}/${{ matrix.arch }}
-        run: make build OS="${{ matrix.os }}" ARCH="${{ matrix.arch }}"
+        run: >-
+          make build OS="${{ matrix.os }}" ARCH="${{ matrix.arch }}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vagrant-registry-export-${{ matrix.os }}-${{ matrix.arch }}
