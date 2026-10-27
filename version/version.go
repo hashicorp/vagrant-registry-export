@@ -7,8 +7,8 @@ var (
 	BuildDate string
 	GitCommit string
 
-	Version           = "0.1.0"
-	VersionPrerelease = ""
+	Version           = "0.1.1"
+	VersionPrerelease = "pre.0"
 )
 
 func FormattedVersion() string {

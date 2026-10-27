@@ -13,6 +13,46 @@ directly with `vagrant box add`.
 
 ## Installation
 
+### Install a prebuilt release
+
+1. Open the [latest GitHub release](https://github.com/hashicorp/vagrant-registry-export/releases/latest).
+
+2. Download the asset matching your operating system and processor architecture:
+
+| Operating system | amd64 (x86-64)                          | arm64 (64-bit ARM)                      |
+| ---------------- | --------------------------------------- | --------------------------------------- |
+| macOS            | `vagrant-registry-export_darwin_amd64`  | `vagrant-registry-export_darwin_arm64`  |
+| Linux            | `vagrant-registry-export_linux_amd64`   | `vagrant-registry-export_linux_arm64`   |
+| Windows          | `vagrant-registry-export_windows_amd64` | `vagrant-registry-export_windows_arm64` |
+
+The release also includes a `SHA256SUMS` file with checksums for the binaries.
+
+3. On macOS or Linux, open a terminal in the download directory and grant the binary
+   permission to run:
+
+```sh
+chmod +x ./vagrant-registry-export_<os>_<arch>
+```
+
+Replace `<os>` and `<arch>` with the values from the asset name you downloaded.
+You can then run it from that directory, for example:
+
+```sh
+./vagrant-registry-export_darwin_arm64 version
+```
+
+On Windows, rename the downloaded asset to add the `.exe` extension, then run it
+from PowerShell or Command Prompt.
+
+On macOS, Gatekeeper may quarantine a downloaded binary. If macOS blocks it, remove
+the quarantine attribute from the binary and try again:
+
+```sh
+xattr -d com.apple.quarantine ./vagrant-registry-export_<os>_<arch>
+```
+
+### Build from source
+
 Build the binary with the provided Makefile:
 
 ```sh
