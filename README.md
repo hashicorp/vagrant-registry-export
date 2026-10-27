@@ -16,6 +16,7 @@ directly with `vagrant box add`.
 ### Install a prebuilt release
 
 1. Open the [latest GitHub release](https://github.com/hashicorp/vagrant-registry-export/releases/latest).
+
 2. Download the asset matching your operating system and processor architecture:
 
 | Operating system | amd64 (x86-64)                          | arm64 (64-bit ARM)                      |
@@ -24,8 +25,10 @@ directly with `vagrant box add`.
 | Linux            | `vagrant-registry-export_linux_amd64`   | `vagrant-registry-export_linux_arm64`   |
 | Windows          | `vagrant-registry-export_windows_amd64` | `vagrant-registry-export_windows_arm64` |
 
-The release also includes a `SHA256SUMS` file with checksums for the binaries. 3. On macOS or Linux, open a terminal in the download directory and grant the binary
-permission to run:
+The release also includes a `SHA256SUMS` file with checksums for the binaries.
+
+3. On macOS or Linux, open a terminal in the download directory and grant the binary
+   permission to run:
 
 ```sh
 chmod +x ./vagrant-registry-export_<os>_<arch>
