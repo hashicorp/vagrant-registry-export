@@ -7,7 +7,7 @@ var (
 	BuildDate string
 	GitCommit string
 
-	Version           = "0.1.0"
+	Version           = "0.1.1"
 	VersionPrerelease = "pre.0"
 )
 
