@@ -37,7 +37,8 @@ jobs:
             printf "PRERELEASE=1\n" >> "$GITHUB_ENV"
           fi
       - name: Create SHA256SUMS
-        run: sha256sum release/* > release/SHA256SUMS
+        run: sha256sum ./* > ./SHA256SUMS
+        working-directory: ./release
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
